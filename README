@@ -1,0 +1,5 @@
+Crypto currency dashboard
+A dashboard built with tailwind css and fusion charts to show Cryptocurrency movements in realtime
+
+API Reference
+https://api.coingecko.com

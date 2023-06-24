@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.fusioncharts.com/fusioncharts/latest/fusioncharts.js"></script>
+    <script src="https://cdn.fusioncharts.com/fusioncharts/latest/themes/fusioncharts.theme.fusion.js"></script>
+
+    <title>Crypto Movement Dashboard</title>
+</head>
+
+<body class="bg-gray-100">
+    <!-- Navbar -->
+    <nav class="bg-white shadow">
+        <div class="container mx-auto px-4 py-2">
+            <div class="flex items-center justify-between">
+                <div class="text-xl font-semibold">Crypto Movement</div>
+                <!-- Add any additional navigation items here -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8">
+        <h2 class="text-2xl font-semibold mb-4">Crypto Movement Today</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="cryptoContainer">
+            <!-- Crypto Cards will be dynamically added here -->
+        </div>
+        <div class="mt-8">
+            <label for="cryptoDropdown" class="mr-2">Select Crypto:</label>
+            <select id="cryptoDropdown" onchange="updateChart()"></select>
+        </div>
+        <div class="mt-8">
+            <div id="chartContainer"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-200 py-4">
+        <div class="container mx-auto text-center">
+            <p class="text-gray-500">Crypto Movement Dashboard &copy; 2023</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Function to fetch cryptocurrency data
+        async function getCryptoData() {
+            try {
+                const response = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,dogecoin,ripple,litecoin,usd-coin");
+                const data = await response.json();
+
+                const cryptoContainer = document.getElementById("cryptoContainer");
+                cryptoContainer.innerHTML = ''; // Clear existing data
+
+                const dropdown = document.getElementById("cryptoDropdown");
+                dropdown.innerHTML = ''; // Clear existing options
+
+                // Iterate through the data array and create cards dynamically
+                data.forEach(crypto => {
+                    const card = document.createElement("div");
+                    card.className = "bg-white rounded-lg shadow p-4";
+
+                    const title = document.createElement("h3");
+                    title.className = "text-lg font-semibold mb-2";
+                    title.textContent = `${crypto.name} (${crypto.symbol.toUpperCase()})`;
+
+                    // Convert USD price to KSH
+                    const priceKsh = (crypto.current_price * 112).toFixed(2);
+
+                    const price = document.createElement("p");
+                    price.className = "text-gray-500 mb-4";
+                    price.textContent = `Current Price: KSH ${priceKsh}`;
+
+                    const changeContainer = document.createElement("div");
+                    changeContainer.className = "flex items-center";
+
+                    const changeIcon = document.createElement("span");
+                    changeIcon.className = crypto.price_change_percentage_24h >= 0 ? "text-green-500 mr-1" : "text-red-500 mr-1";
+                    changeIcon.innerHTML = crypto.price_change_percentage_24h >= 0 ? "&#9650;" : "&#9660;";
+
+                    const change = document.createElement("p");
+                    change.className = crypto.price_change_percentage_24h >= 0 ? "text-green-500" : "text-red-500";
+                    change.textContent = `${crypto.price_change_percentage_24h.toFixed(2)}%`;
+
+                    changeContainer.appendChild(changeIcon);
+                    changeContainer.appendChild(change);
+
+                    card.appendChild(title);
+                    card.appendChild(price);
+                    card.appendChild(changeContainer);
+
+                    cryptoContainer.appendChild(card);
+
+                    // Add crypto options to the dropdown
+                    const option = document.createElement("option");
+                    option.value = crypto.id;
+                    option.textContent = `${crypto.name} (${crypto.symbol.toUpperCase()})`;
+                    dropdown.appendChild(option);
+                });
+
+                // Initialize the chart with the first crypto
+                updateChart();
+            } catch (error) {
+                console.error("Error fetching cryptocurrency data:", error);
+            }
+        }
+
+        // Function to update the chart based on the selected crypto
+        let cryptoChart;
+        async function updateChart() {
+            try {
+                const dropdown = document.getElementById("cryptoDropdown");
+                const selectedCrypto = dropdown.value;
+
+                const response = await fetch(`https://api.coingecko.com/api/v3/coins/${selectedCrypto}/market_chart?vs_currency=usd&days=7`);
+                const data = await response.json();
+
+                const chartData = {
+                    chart: {
+                        caption: "Crypto Price Movement",
+                        yaxisname: "Price (USD)",
+                        theme: "fusion"
+                    },
+                    data: data.prices.map(price => ({ label: moment(price[0]).format("YYYY-MM-DD"), value: price[1] }))
+                };
+
+                const chartConfig = {
+                    type: "line",
+                    renderAt: "chartContainer",
+                    width: "100%",
+                    height: "400",
+                    dataFormat: "json",
+                    dataSource: chartData
+                };
+
+                if (cryptoChart) {
+                    cryptoChart.dispose();
+                    cryptoChart = null;
+                }
+
+                // Render the chart
+                cryptoChart = new FusionCharts(chartConfig);
+                cryptoChart.render();
+            } catch (error) {
+                console.error("Error fetching chart data:", error);
+            }
+        }
+
+        // Call the function to fetch and populate cryptocurrency data initially
+        getCryptoData();
+
+        // Refresh data every 1 minute
+        setInterval(getCryptoData, 60000);
+    </script>
+</body>
+
+</html>
+
